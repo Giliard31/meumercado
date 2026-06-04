@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Mercado</title>
+    <!-- Conexão com o arquivo de configuração do aplicativo -->
+    <link rel="manifest" href="manifest.json">
+    <style>
+        :root {
+            --primary: #2ecc71;
+            --danger: #e74c3c;
+            --warning: #f1c40f;
+            --dark: #2c3e50;
+            --light: #f8f9fa;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f4f6f7;
+            color: var(--dark);
+            padding-bottom: 40px;
+        }
+
+        header {
+            background-color: var(--dark);
+            color: white;
+            padding: 15px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .header-topo {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .btn-menu {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        /* Barra de resumo no topo */
+        .valores-resumo-topo {
+            display: flex;
+            justify-content: space-around;
+            background: #34495e;
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .valores-resumo-topo p {
+            font-size: 11px;
+            color: #bdc3c7;
+            margin-bottom: 2px;
+        }
+
+        .valores-resumo-topo strong {
+            font-size: 16px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 0 15px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .btn-success { background-color: var(--primary); color: white; }
+        .btn-danger { background-color: var(--danger); color: white; margin-top: 15px; }
+        .btn-navy { background-color: #34495e; color: white; margin-top: 15px; }
+        
+        .btn-edit {
+            background-color: var(--warning);
+            color: var(--dark);
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        /* Aba Lateral (Sidebar) */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -300px;
+            width: 300px;
+            height: 100%;
+            background-color: white;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.2);
+            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
+            padding: 20px;
+        }
+
+        .sidebar.active { left: 0; }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            z-index: 99;
+        }
+
+        .overlay.active { display: block; }
+
+        .close-sidebar {
+            float: right;
+            font-size: 28px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: #7f8c8d;
+        }
+
+        /* Lista de Itens */
+        .lista-itens {
+            list-style: none;
+            max-height: 350px;
+            overflow-y: auto;
+        }
+
+        .lista-itens li {
+            padding: 12px 5px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .item-info { display: flex; flex-direction: column; }
+        .item-subtotal { font-size: 12px; color: #7f8c8d; margin-top: 2px; }
+        .item-direita { display: flex; align-items: center; }
+
+        .saldo-positivo { color: #2ecc71; font-weight: bold; }
+        .saldo-negativo { color: #e74c3c; font-weight: bold; }
+        
+        footer {
+            text-align: center;
+            font-size: 11px;
+            color: #7f8c8d;
+            margin: 20px 0;
+        }
+
+        /* Mensagens Modais e Alertas */
+        .alerta-centro {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #ff9800;
+            color: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            z-index: 1000;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            display: none;
+            animation: pop 0.3s ease;
+        }
+
+        .toast-mensagem {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--primary);
+            color: white;
+            padding: 12px 35px;
+            border-radius: 30px;
+            font-weight: bold;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+            z-index: 1001;
+            display: none;
+        }
+
+        /* Estilo da Nota Fiscal (Cupão) */
+        .modal-nota {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 2000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .cupom {
+            background: #fffef2;
+            color: #000;
+            font-family: 'Courier New', Courier, monospace;
+            width: 100%;
+            max-width: 360px;
+            padding: 20px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            border: 1px dashed #ccc;
+        }
+
+        .cupom-header { text-align: center; text-transform: uppercase; margin-bottom: 15px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
+        .cupom-linha { display: flex; justify-content: space-between; font-size: 13px; margin: 3px 0; }
+        .cupom-total { border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 5px 0; margin-top: 10px; font-weight: bold; font-size: 15px; }
+
+        @keyframes pop {
+            0% { transform: translate(-50%, -50%) scale(0.7); opacity: 0; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-topo">
+            <button class="btn-menu" onclick="toggleSidebar()">☰ Carteira</button>
+            <h2>Meu Mercado</h2>
+        </div>
+        <div class="valores-resumo-topo">
+            <div>
+                <p>TOTAL COMPRA</p>
+                <strong id="totalCompraText">R$ 0,00</strong>
+            </div>
+            <div>
+                <p>SALDO DISPONÍVEL</p>
+                <strong id="saldoText" class="saldo-positivo">R$ 0,00</strong>
+            </div>
+        </div>
+    </header>
+
+    <!-- Avisos e Toasts -->
+    <div id="toast" class="toast-mensagem">BOAS COMPRAS! 🛒</div>
+    <div id="alertaSaldo" class="alerta-centro">
+        ⚠️ SEU SALDO ESTÁ ACABANDO!<br>
+        <span style="font-size:13px; font-weight:normal;">Resta muito pouco dinheiro na carteira.</span>
+        <button onclick="fecharAlerta()" style="margin-top:15px; padding:5px 15px; border:none; background:white; color:#ff9800; font-weight:bold; border-radius:4px; cursor:pointer;">Entendi</button>
+    </div>
+
+    <!-- Nota Fiscal (Modal) -->
+    <div id="modalNota" class="modal-nota" onclick="fecharNota(event)">
+        <div class="cupom">
+            <div class="cupom-header">
+                <strong>Supermercado Económico</strong><br>
+                <span>NFC-e - Cupom Fiscal</span><br>
+                <small id="cupomDataHora"></small>
+            </div>
+            <div style="font-weight: bold; margin-bottom: 5px; font-size: 13px;">DETALHE DOS ITENS</div>
+            <div id="cupomItens"></div>
+            <div class="cupom-total">
+                <div class="cupom-linha"><span>TOTAL BRUTO:</span><span id="cupomTotal">R$ 0,00</span></div>
+            </div>
+            <div style="margin-top: 10px; font-size: 13px; padding-bottom: 10px;">
+                <div class="cupom-linha"><span>Dinheiro Informado:</span><span id="cupomPago">R$ 0,00</span></div>
+                <div class="cupom-linha"><span>Saldo Restante/Troco:</span><span id="cupomTroco">R$ 0,00</span></div>
+            </div>
+            <div style="text-align: center; margin-top: 25px; border-top: 1px dashed #000; padding-top: 10px; font-size: 12px; text-transform: uppercase; margin-bottom: 15px;">
+                Obrigado pela preferência!<br>Volte Sempre.
+            </div>
+
+            <button class="btn btn-navy" onclick="window.print()" style="padding: 10px; font-size: 14px;">Imprimir Nota 🖨️</button>
+        </div>
+    </div>
+
+    <!-- Aba Lateral (Sidebar) -->
+    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+    <div class="sidebar" id="sidebar">
+        <button class="close-sidebar" onclick="toggleSidebar()">&times;</button>
+        <h3 style="margin-bottom: 25px;">Definir Dinheiro</h3>
+        
+        <div class="form-group">
+            <label for="orcamentoInput">Quanto tenho em dinheiro? (R$)</label>
+            <input type="number" step="0.01" id="orcamentoInput" placeholder="0.00">
+        </div>
+        <button onclick="salvarOrcamento()" class="btn btn-success">Salvar Valor</button>
+
+        <hr style="margin: 25px 0; border: 0; border-top: 1px solid #eee;">
+        <p style="margin-bottom: 10px;"><strong>Dinheiro no Bolso:</strong> <span id="sidebarOrcamento">R$ 0,00</span></p>
+        <p><strong>Total gasto:</strong> <span id="sidebarGasto">R$ 0,00</span></p>
+    </div>
+
+    <!-- Conteúdo Principal -->
+    <div class="container">
+        
+        <!-- Formulário para adicionar item -->
+        <div class="card">
+            <h3 id="tituloForm">Adicionar Item</h3>
+            <form id="formItem" onsubmit="adicionarItem(event)" style="margin-top: 15px;">
+                <div class="form-group">
+                    <label for="nomeItem">Nome do Item (Opcional)</label>
+                    <input type="text" id="nomeItem" placeholder="Ex: Arroz">
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex: 2;">
+                        <label for="valorItem">Valor Unitário (R$)</label>
+                        <input type="number" step="0.01" id="valorItem" placeholder="0.00" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="qtdItem">Qtd.</label>
+                        <input type="number" id="qtdItem" value="1" min="1" required>
+                    </div>
+                </div>
+                <button type="submit" id="btnSalvarItem" class="btn btn-success">Adicionar à Lista</button>
+            </form>
+        </div>
+
+        <!-- Carrinho de Compras -->
+        <div class="card">
+            <h3>Carrinho atual</h3>
+            <ul class="lista-itens" id="listaItens" style="margin-top: 15px;"></ul>
+            
+            <button id="btnFinalizar" onclick="gerarNota()" class="btn btn-success" style="display: none; margin-top: 20px; background-color: #2980b9;">🏁 Finalizar Compra (Emitir Nota)</button>
+            <button id="btnLimpar" onclick="limparTudo()" class="btn btn-danger" style="display: none;">Limpar Tudo</button>
+        </div>
+
+    </div>
+
+    <footer>
+        Sistema de Mercado &copy; <span id="anoAtual"></span>
+    </footer>
+
+    <!-- Ativador do Aplicativo (Service Worker) -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(() => console.log('Aplicativo inicializado com sucesso!'))
+                .catch((err) => console.log('Erro ao carregar app:', err));
+        }
+    </script>
+
+    <script>
+        let dados = JSON.parse(localStorage.getItem('app_mercado')) || { itens: [], orcamento: 0.00 };
+        let indiceEdicao = -1;
+        let alertaDisparado = false;
+
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        const orcamentoInput = document.getElementById('orcamentoInput');
+        const listaItens = document.getElementById('listaItens');
+        const btnLimpar = document.getElementById('btnLimpar');
+        const btnFinalizar = document.getElementById('btnFinalizar');
+        const tituloForm = document.getElementById('tituloForm');
+        const btnSalvarItem = document.getElementById('btnSalvarItem');
+
+        const nomeInput = document.getElementById('nomeItem');
+        const valorInput = document.getElementById('valorItem');
+        const qtdInput = document.getElementById('qtdItem');
+
+        function formatarMoeda(valor) {
+            return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        // Nova Função: Pergunta o valor assim que abre o app
+        function perguntarValorInicial() {
+            // Se o orçamento ainda for zero (ou seja, lista limpa/nova compra), ele pergunta
+            if (dados.orcamento === 0) {
+                let resposta = prompt("Quanto você tem disponível para as compras hoje? (R$)\nDeixe em branco ou digite 0 se não quiser definir valor.");
+                
+                // Trata a resposta substituindo vírgula por ponto para não quebrar o código
+                if (resposta !== null && resposta.trim() !== "") {
+                    resposta = resposta.replace(',', '.');
+                    const valorDefinido = parseFloat(resposta) || 0;
+                    dados.orcamento = valorDefinido;
+                    salvarDados();
+                }
+            }
+        }
+
+        function toggleSidebar() {
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+            if(sidebar.classList.contains('active')) {
+                orcamentoInput.value = dados.orcamento > 0 ? dados.orcamento : '';
+                orcamentoInput.focus();
+            }
+        }
+
+        function salvarOrcamento() {
+            const valor = parseFloat(orcamentoInput.value) || 0;
+            dados.orcamento = valor;
+            salvarDados();
+            alertaDisparado = false;
+            atualizarTela();
+            toggleSidebar();
+
+            const toast = document.getElementById('toast');
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 2500);
+        }
+
+        function simularTotalComNovoItem(valorNovo, qtdNova) {
+            let total = 0;
+            dados.itens.forEach((item, index) => {
+                if (index !== indiceEdicao) {
+                    total += (item.valor * item.qtd);
+                }
+            });
+            return total + (valorNovo * qtdNova);
+        }
+
+        function adicionarItem(event) {
+            event.preventDefault();
+            const nome = nomeInput.value.trim() || `Item ${dados.itens.length + 1}`;
+            const valor = parseFloat(valorInput.value) || 0;
+            const qtd = parseInt(qtdInput.value) || 1;
+
+            if (valor <= 0) return;
+
+            const totalSimulado = simularTotalComNovoItem(valor, qtd);
+            const saldoSimulado = dados.orcamento - totalSimulado;
+
+            if (dados.orcamento > 0 && saldoSimulado < 0) {
+                const valorEstourado = Math.abs(saldoSimulado);
+                const permitir = confirm(`Atenção! Esta compra vai ultrapassar o valor da sua carteira em ${formatarMoeda(valorEstourado)}.\nPode passar do valor colocado na carteira?`);
+                if (!permitir) {
+                    return; 
+                }
+            }
+
+            if (indiceEdicao === -1) {
+                dados.itens.push({ nome, valor, qtd });
+            } else {
+                dados.itens[indiceEdicao] = { nome, valor, qtd };
+                indiceEdicao = -1;
+                tituloForm.textContent = "Adicionar Item";
+                btnSalvarItem.textContent = "Adicionar à Lista";
+                btnSalvarItem.style.backgroundColor = "var(--primary)";
+            }
+
+            salvarDados();
+            atualizarTela();
+
+            nomeInput.value = '';
+            valorInput.value = '';
+            qtdInput.value = '1';
+            valorInput.focus();
+        }
+
+        function editarItem(index) {
+            indiceEdicao = index;
+            const item = dados.itens[index];
+            nomeInput.value = item.nome;
+            valorInput.value = item.valor;
+            qtdInput.value = item.qtd;
+
+            tituloForm.textContent = "✏️ Editar Item";
+            btnSalvarItem.textContent = "Atualizar Item";
+            btnSalvarItem.style.backgroundColor = "var(--warning)";
+            btnSalvarItem.style.color = "var(--dark)";
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            valorInput.focus();
+        }
+
+        function limparTudo() {
+            if(confirm("Deseja mesmo limpar tudo?")) {
+                dados.itens = [];
+                dados.orcamento = 0.00;
+                indiceEdicao = -1;
+                alertaDisparado = false;
+                tituloForm.textContent = "Adicionar Item";
+                btnSalvarItem.textContent = "Adicionar à Lista";
+                btnSalvarItem.style.backgroundColor = "var(--primary)";
+                salvarDados();
+                
+                // Pergunta de novo após limpar tudo para iniciar uma nova compra
+                perguntarValorInicial();
+                atualizarTela();
+            }
+        }
+
+        function fecharAlerta() {
+            document.getElementById('alertaSaldo').style.display = 'none';
+        }
+
+        function gerarNota() {
+            const agora = new Date();
+            document.getElementById('cupomDataHora').textContent = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR');
+            
+            const containerCupom = document.getElementById('cupomItens');
+            containerCupom.innerHTML = '';
+            
+            let totalCompra = 0;
+            dados.itens.forEach(item => {
+                const totalItem = item.valor * item.qtd;
+                totalCompra += totalItem;
+                
+                const linha = document.createElement('div');
+                linha.className = 'cupom-linha';
+                linha.innerHTML = `
+                    <span>${item.nome.substring(0, 18)} (${item.qtd}x)</span>
+                    <span>${formatarMoeda(totalItem)}</span>
+                `;
+                containerCupom.appendChild(linha);
+            });
+
+            const saldo = dados.orcamento - totalCompra;
+
+            document.getElementById('cupomTotal').textContent = formatarMoeda(totalCompra);
+            document.getElementById('cupomPago').textContent = formatarMoeda(dados.orcamento);
+            document.getElementById('cupomTroco').textContent = formatarMoeda(saldo);
+
+            document.getElementById('modalNota').style.display = 'flex';
+        }
+
+        function fecharNota(event) {
+            if(event.target.id === 'modalNota') {
+                document.getElementById('modalNota').style.display = 'none';
+            }
+        }
+
+        function salvarDados() {
+            localStorage.setItem('app_mercado', JSON.stringify(dados));
+        }
+
+        function atualizarTela() {
+            listaItens.innerHTML = '';
+            let totalCompra = 0;
+
+            if (dados.itens.length === 0) {
+                listaItens.innerHTML = '<p style="color: #7f8c8d; text-align: center;">Nenhum item no carrinho.</p>';
+                btnLimpar.style.display = 'none';
+                btnFinalizar.style.display = 'none';
+            } else {
+                dados.itens.forEach((item, index) => {
+                    const totalItem = item.valor * item.qtd;
+                    totalCompra += totalItem;
+
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <div class="item-info">
+                            <strong>${item.nome} (${item.qtd}x)</strong>
+                            <span class="item-subtotal">Un: ${formatarMoeda(item.valor)} | Total: ${formatarMoeda(totalItem)}</span>
+                        </div>
+                        <div class="item-direita">
+                            <button onclick="editarItem(${index})" class="btn-edit" title="Editar">✏️</button>
+                        </div>
+                    `;
+                    listaItens.appendChild(li);
+                });
+                btnLimpar.style.display = 'block';
+                btnFinalizar.style.display = 'block';
+            }
+
+            const saldo = dados.orcamento - totalCompra;
+
+            document.getElementById('totalCompraText').textContent = formatarMoeda(totalCompra);
+            const saldoTextEl = document.getElementById('saldoText');
+            saldoTextEl.textContent = formatarMoeda(saldo);
+            
+            if (saldo >= 0) {
+                saldoTextEl.className = 'saldo-positivo';
+            } else {
+                saldoTextEl.className = 'saldo-negativo';
+            }
+
+            if (dados.orcamento > 0 && saldo >= 5 && saldo <= 10) {
+                if (!alertaDisparado) {
+                    document.getElementById('alertaSaldo').style.display = 'block';
+                    alertaDisparado = true;
+                }
+            } else if (saldo > 10 || saldo < 5) {
+                document.getElementById('alertaSaldo').style.display = 'none';
+                if(saldo > 10) alertaDisparado = false; 
+            }
+
+            document.getElementById('sidebarOrcamento').textContent = formatarMoeda(dados.orcamento);
+            document.getElementById('sidebarGasto').textContent = formatarMoeda(totalCompra);
+        }
+
+        document.getElementById('anoAtual').textContent = new Date().getFullYear();
+        
+        // Executa a pergunta antes de renderizar a tela pela primeira vez
+        perguntarValorInicial();
+        atualizarTela();
+    </script>
+</body>
+</html>
